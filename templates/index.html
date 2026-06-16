@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A premium web dashboard for browsing and sharing BigQuery Release Notes. Fetch feed updates and tweet about specific features or issues.">
+    <title>BigQuery Release Insights Hub</title>
+    
+    <!-- Google Fonts: Outfit (UI) and JetBrains Mono (Code/Metadata) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- CSS Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- App Header -->
+        <header>
+            <div class="header-title-area">
+                <h1>
+                    <!-- Database-like icon with cloud-like properties -->
+                    <svg class="logo-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+                        <path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"></path>
+                    </svg>
+                    BigQuery Release Insights
+                </h1>
+                <p>Stay up to date with Google Cloud BigQuery changes, features, and fixes.</p>
+            </div>
+            
+            <div class="header-controls">
+                <div class="sync-status">
+                    Last synced:<br>
+                    <span id="sync-time">Loading...</span>
+                </div>
+                <!-- Refresh Button with Spinner SVG -->
+                <button id="refresh-btn" class="btn btn-secondary btn-icon-only" title="Refresh Release Notes" aria-label="Refresh Feed">
+                    <svg class="spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Dashboard Grid Layout -->
+        <div class="dashboard-grid">
+            <!-- Left Column: Search, Filters & Cards -->
+            <main class="content-area">
+                <!-- Search & Filters Toolbar -->
+                <section class="toolbar glass-panel" aria-label="Controls and filters">
+                    <div class="search-wrapper">
+                        <!-- Search Icon -->
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" id="search-input" class="search-input" placeholder="Search release notes (e.g. Gemini, JSON, export)..." aria-label="Search release notes">
+                    </div>
+                    
+                    <div class="filter-pills" id="filter-pills">
+                        <span class="filter-label">Filter:</span>
+                        <button class="pill active" data-type="all">All</button>
+                        <button class="pill" data-type="Feature">Features</button>
+                        <button class="pill" data-type="Changed">Changes</button>
+                        <button class="pill" data-type="Issue">Issues</button>
+                        <button class="pill" data-type="Deprecated">Deprecated</button>
+                    </div>
+
+                    <div class="stats-summary" id="stats-summary">
+                        <span id="stats-summary-text">Analyzing release notes...</span>
+                    </div>
+                </section>
+
+                <!-- Release Notes Cards List -->
+                <section class="releases-list" id="releases-list" aria-label="Release note items">
+                    <!-- Skeleton Cards will be loaded dynamically here -->
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                </section>
+            </main>
+
+            <!-- Right Column: Tweet Builder Sidebar -->
+            <aside class="sidebar" aria-label="Tweet Builder Sidebar">
+                <div class="sidebar-panel glass-panel">
+                    <h2 class="sidebar-title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+                            <polyline points="16 6 12 2 8 6"></polyline>
+                            <line x1="12" y1="2" x2="12" y2="15"></line>
+                        </svg>
+                        Share Center
+                    </h2>
+
+                    <!-- Sidebar Placeholder (Shown when nothing is selected) -->
+                    <div class="sidebar-placeholder" id="sidebar-placeholder">
+                        <div class="placeholder-icon">🚀</div>
+                        <div class="placeholder-title">No Update Selected</div>
+                        <div class="placeholder-text">Click on any release note card on the left to read, customize, and Tweet about it instantly.</div>
+                    </div>
+
+                    <!-- Tweet Builder Box (Shown when a card is selected) -->
+                    <div class="tweet-builder" id="tweet-builder">
+                        <div class="selected-reference">
+                            <div class="selected-reference-header">
+                                <span id="ref-type" class="badge">FEATURE</span>
+                                <span id="ref-date">June 15, 2026</span>
+                            </div>
+                            <div id="ref-snippet" class="selected-reference-snippet">
+                                Sneak peak of the release note text content...
+                            </div>
+                        </div>
+
+                        <div class="tweet-textarea-wrapper">
+                            <textarea id="tweet-textarea" class="tweet-textarea" placeholder="Draft your tweet here..." aria-label="Tweet draft text"></textarea>
+                        </div>
+
+                        <div class="tweet-controls">
+                            <!-- Circular Progress for Character Count -->
+                            <div class="char-counter-container">
+                                <div class="char-counter-circle">
+                                    <svg>
+                                        <circle class="char-counter-bg" cx="14" cy="14" r="12.5"></circle>
+                                        <circle id="char-progress-circle" class="char-counter-fill" cx="14" cy="14" r="12.5"></circle>
+                                    </svg>
+                                </div>
+                                <span id="char-count-text" class="char-count-text">0 / 280</span>
+                            </div>
+                        </div>
+
+                        <div class="tweet-actions">
+                            <button id="btn-tweet" class="btn btn-tweet">
+                                <!-- X/Twitter Bird-replacement modern logo -->
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                                </svg>
+                                Tweet on X
+                            </button>
+                            <button id="btn-copy" class="btn btn-secondary">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                                Copy Tweet Text
+                            </button>
+                            <button id="btn-copy-html" class="btn btn-secondary">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="16 18 22 12 16 6"></polyline>
+                                    <polyline points="8 6 2 12 8 18"></polyline>
+                                </svg>
+                                Copy Raw HTML
+                            </button>
+                            <button class="btn btn-secondary" onclick="clearSelection()" style="background: transparent; border-color: transparent; color: var(--text-muted); font-size: 0.85rem; font-weight: 500;">
+                                Clear Selection
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- JavaScript Bundle -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
